@@ -12,25 +12,25 @@ from RestrictedPython.Guards import safe_builtins,guarded_iter_unpack_sequence
 from  RestrictedPython.Eval import default_guarded_getattr, default_guarded_getitem, default_guarded_getiter
 import pandas as pd
 
+from RestrictedPython import compile_restricted
+from RestrictedPython.Eval import default_guarded_getattr, default_guarded_getitem, default_guarded_getiter
+import pandas as pd
+
 class Sandbox:
     def __init__(self):
-        self._allowed_imports = {}
+        self._allowed_imports = {"pandas": pd}
 
     def allow_import(self, module_name):
-        try:
-            module = __import__(module_name)
-            self._allowed_imports[module_name] = module
-        except ImportError:
-            pass
+        if module_name in self._allowed_imports:
+            return self._allowed_imports[module_name]
+        else:
+            raise ImportError(f"Import of '{module_name}' is not allowed.")
 
     def execute(self, code, local_vars = {}):
-        allowed_builtins = safe_builtins
-        # Add __builtins__, __import__, and allowed imports to the globals
-        restricted_globals = {"__builtins__": allowed_builtins}
-        restricted_globals.update(self._allowed_imports)
-
-        builtin_mappings = {
-            "__import__": __import__,
+        byte_code = compile_restricted(code, '<inline>', 'exec')
+        restricted_globals = {
+            "__builtins__": safe_builtins,
+            "__import__": self.allow_import,
             "_getattr_": default_guarded_getattr,
             "_getitem_": default_guarded_getitem,
             "_getiter_": default_guarded_getiter,
@@ -39,27 +39,9 @@ class Sandbox:
             "set": set,
             "pd": pd,
         }
-
-        series_methods = [
-            "sum", "mean", "any", "argmax", "argmin", "count", "cumsum", "cumprod", "diff",
-            "dropna", "fillna", "head", "idxmax", "idxmin", "last", "max", "min", "notna",
-            "prod", "quantile", "rename", "round", "tail", "to_frame", "to_list", "to_numpy",
-            "to_string","unique",  "sort_index", "sort_values", "aggregate"
-        ]
-
-
-        builtin_mappings.update({method: getattr(pd.Series, method) for method in series_methods})
-
-        restricted_globals["__builtins__"].update(builtin_mappings)
-
-        byte_code = compile_restricted(source=code, filename='<inline>', mode='exec')
-
-        # Execute the restricted code
+        restricted_globals.update(self._allowed_imports)
         exec(byte_code, restricted_globals, local_vars)
-
-        return local_vars
-
-
+        
 class PandasLLM(pd.DataFrame):
     """
     PandasLLM is a subclass of the Pandas DataFrame class. It is designed to provide a
