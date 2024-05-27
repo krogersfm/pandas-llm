@@ -1,7 +1,9 @@
 import pandas as pd
 import datetime
 import numpy as np
-import openai
+from openai import OpenAI
+
+
 import os
 import re
 import json
@@ -15,6 +17,8 @@ import pandas as pd
 from RestrictedPython import compile_restricted
 from RestrictedPython.Eval import default_guarded_getattr, default_guarded_getitem, default_guarded_getiter
 import pandas as pd
+
+
 
 class Sandbox:
     def __init__(self):
@@ -125,6 +129,7 @@ class PandasLLM(pd.DataFrame):
         self.path = path
         self.verbose = verbose
         self.force_sandbox = force_sandbox
+        self.client = OpenAI(api_key=self.llm_api_key)
 
     def _buildPromptForRole(self):
         prompt_role = f"""
@@ -265,7 +270,7 @@ import numpy as np
         """
         
         # Set up OpenAI API key
-        openai.api_key = self.llm_api_key
+        
 
         messages=[
                 {"role": "system", 
@@ -278,11 +283,9 @@ import numpy as np
         response = None
         for times in range(0,3):
             try:
-                response = openai.ChatCompletion.create(
-                model=self.model,
+                response = self.client.chat.completions.create(model=self.model,
                 temperature=self.temperature,
-                messages = messages
-                )
+                messages = messages)
                 break;
             except Exception as e:
                 self._print(f"error {e}")
