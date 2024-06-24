@@ -55,7 +55,7 @@ class PandasLLM(pd.DataFrame):
     code_blocks = [r'```python(.*?)```',r'```(.*?)```']
 
     llm_default_model = "gpt-3.5-turbo"
-    llm_default_temperature = 0.2
+    llm_default_temperature = 0.1
     llm_engine = "openai"
     llm_default_params = { "model": llm_default_model,
                             "temperature": llm_default_temperature}
@@ -170,6 +170,10 @@ While crafting the code, please follow these guidelines:
 3. If a single line solution is not possible, multiline solutions or functions are acceptable, but the code must end with an assignment to the variable 'result'.
 4. Assign the resulting code to the variable 'result'.
 5. Avoid importing any additional libraries than pandas and numpy.
+
+Examples:
+Q: What are the top ten YW cattle in my datastore?
+A: result = df['YW weight'].astype(float).nlargest(10)
 
 """
         if not self.custom_prompt is None and len(self.custom_prompt) > 0:
